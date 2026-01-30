@@ -20,6 +20,9 @@ export interface Activity {
   hostName: string;
   hostAvatar: string;
   level: 'any' | 'beginner' | 'intermediate' | 'advanced';
+  isJustPosted?: boolean;
+  isHost?: boolean;
+  note?: string;
 }
 
 export interface ChatMessage {

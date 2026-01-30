@@ -1,20 +1,46 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { MobileLayout } from '@/components/MobileLayout';
 import { SportIcon } from '@/components/SportIcon';
 import { LiveIndicator } from '@/components/LiveIndicator';
 import { Button } from '@/components/ui/button';
 import { mockActivities } from '@/data/mockActivities';
-import { ArrowLeft, MapPin, Clock, Users, Share2, Star, Check } from 'lucide-react';
+import { Activity } from '@/types/activity';
+import { ArrowLeft, MapPin, Clock, Users, Share2, Star, Check, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function ActivityDetailScreen() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const justPosted = searchParams.get('justPosted') === 'true';
+  
   const [isJoining, setIsJoining] = useState(false);
   const [hasJoined, setHasJoined] = useState(false);
+  const [activity, setActivity] = useState<Activity | null>(null);
   
-  const activity = mockActivities.find(a => a.id === id);
+  useEffect(() => {
+    // Check for newly posted game in sessionStorage
+    const newGameData = sessionStorage.getItem('newGame');
+    if (newGameData) {
+      const newGame = JSON.parse(newGameData) as Activity;
+      if (newGame.id === id) {
+        setActivity(newGame);
+        // If just posted, auto-navigate to chat after showing success
+        if (justPosted) {
+          setHasJoined(true);
+          setTimeout(() => {
+            navigate(`/chat/${newGame.id}`);
+          }, 1500);
+        }
+        return;
+      }
+    }
+    
+    // Otherwise look in mock activities
+    const found = mockActivities.find(a => a.id === id);
+    setActivity(found || null);
+  }, [id, justPosted, navigate]);
   
   if (!activity) {
     return (
@@ -62,12 +88,31 @@ export default function ActivityDetailScreen() {
 
       {/* Content */}
       <main className="flex-1 px-6 pb-32 overflow-y-auto">
+        {/* Just Posted Success Banner */}
+        {justPosted && (
+          <div className="mb-6 p-4 bg-primary/10 rounded-xl border border-primary/30 flex items-center gap-3 animate-slide-up">
+            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Game Posted! 🎉</p>
+              <p className="text-sm text-muted-foreground">Opening chat...</p>
+            </div>
+          </div>
+        )}
+
         {/* Sport & Title */}
         <div className="flex items-start gap-4 mb-6">
           <SportIcon sport={activity.sport} size="xl" />
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              {isUrgent && (
+              {activity.isJustPosted && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                  <Sparkles className="w-3 h-3" />
+                  Just Posted
+                </span>
+              )}
+              {isUrgent && !activity.isJustPosted && (
                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-urgent/10">
                   <LiveIndicator size="sm" />
                   <span className="text-xs font-bold text-urgent">LIVE</span>
@@ -84,6 +129,13 @@ export default function ActivityDetailScreen() {
           </div>
         </div>
 
+        {/* Note if present */}
+        {activity.note && (
+          <div className="mb-6 p-4 bg-card rounded-xl border border-border/50">
+            <p className="text-sm text-muted-foreground italic">"{activity.note}"</p>
+          </div>
+        )}
+
         {/* Key Info Cards */}
         <div className="grid grid-cols-3 gap-3 mb-6">
           <div className="p-4 bg-card rounded-xl border border-border/50 text-center">
@@ -92,9 +144,9 @@ export default function ActivityDetailScreen() {
               isUrgent ? "text-urgent" : "text-primary"
             )} />
             <p className="text-lg font-bold text-foreground">
-              {activity.startsIn} min
+              {activity.startsIn === 0 ? 'Now' : `${activity.startsIn} min`}
             </p>
-            <p className="text-xs text-muted-foreground">starts in</p>
+            <p className="text-xs text-muted-foreground">{activity.startsIn === 0 ? 'starting' : 'starts in'}</p>
           </div>
           
           <div className="p-4 bg-card rounded-xl border border-border/50 text-center">
@@ -151,35 +203,48 @@ export default function ActivityDetailScreen() {
           />
           <div className="flex-1">
             <p className="font-semibold text-foreground">{activity.hostName}</p>
-            <p className="text-sm text-muted-foreground">Host • 4.9 ⭐</p>
+            <p className="text-sm text-muted-foreground">
+              {activity.isHost ? 'You are hosting' : 'Host • 4.9 ⭐'}
+            </p>
           </div>
         </div>
       </main>
 
       {/* Fixed Bottom CTA */}
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] p-4 pb-safe-bottom bg-background/95 backdrop-blur-sm border-t border-border">
-        <Button 
-          variant={hasJoined ? "default" : "action"}
-          size="xl" 
-          className={cn(
-            "w-full transition-all",
-            !hasJoined && "shadow-glow",
-            hasJoined && "bg-live text-white"
-          )}
-          onClick={handleJoin}
-          disabled={isJoining || hasJoined}
-        >
-          {isJoining ? (
-            <span className="animate-pulse">Joining...</span>
-          ) : hasJoined ? (
-            <>
-              <Check className="w-5 h-5" />
-              Joined! Opening chat...
-            </>
-          ) : (
-            'Join Now'
-          )}
-        </Button>
+        {activity.isHost ? (
+          <Button 
+            variant="default"
+            size="xl" 
+            className="w-full"
+            onClick={() => navigate(`/chat/${activity.id}`)}
+          >
+            Open Chat
+          </Button>
+        ) : (
+          <Button 
+            variant={hasJoined ? "default" : "action"}
+            size="xl" 
+            className={cn(
+              "w-full transition-all",
+              !hasJoined && "shadow-glow",
+              hasJoined && "bg-live text-white"
+            )}
+            onClick={handleJoin}
+            disabled={isJoining || hasJoined}
+          >
+            {isJoining ? (
+              <span className="animate-pulse">Joining...</span>
+            ) : hasJoined ? (
+              <>
+                <Check className="w-5 h-5" />
+                Joined! Opening chat...
+              </>
+            ) : (
+              'Join Now'
+            )}
+          </Button>
+        )}
       </div>
     </MobileLayout>
   );

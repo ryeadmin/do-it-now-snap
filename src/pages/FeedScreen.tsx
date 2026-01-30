@@ -1,14 +1,14 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { MobileLayout } from '@/components/MobileLayout';
 import { ActivityCard } from '@/components/ActivityCard';
 import { LiveIndicator } from '@/components/LiveIndicator';
 import { mockActivities } from '@/data/mockActivities';
+import { Activity, SportType } from '@/types/activity';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { BottomNav } from '@/components/BottomNav';
 import { FilterSheet, FilterOptions, ActiveFilters } from '@/components/FilterSheet';
-import { SportType } from '@/types/activity';
 import { cn } from '@/lib/utils';
 
 const sportTabs: { label: string; value: SportType | 'all'; icon: string }[] = [
@@ -23,12 +23,37 @@ const sportTabs: { label: string; value: SportType | 'all'; icon: string }[] = [
 export default function FeedScreen() {
   const navigate = useNavigate();
   const [selectedSport, setSelectedSport] = useState<SportType | 'all'>('all');
+  const [allActivities, setAllActivities] = useState<Activity[]>(mockActivities);
   const [filters, setFilters] = useState<FilterOptions>({
     distance: null,
     time: null,
     sport: null,
     spotsAvailable: false,
   });
+
+  // Check for newly posted games on mount/focus
+  useEffect(() => {
+    const checkNewGame = () => {
+      const newGameData = sessionStorage.getItem('newGame');
+      if (newGameData) {
+        const newGame = JSON.parse(newGameData) as Activity;
+        // Add to activities if not already present
+        setAllActivities(prev => {
+          if (prev.some(a => a.id === newGame.id)) {
+            return prev;
+          }
+          // Add new game at the top
+          return [newGame, ...prev];
+        });
+      }
+    };
+    
+    checkNewGame();
+    
+    // Also check when window regains focus
+    window.addEventListener('focus', checkNewGame);
+    return () => window.removeEventListener('focus', checkNewGame);
+  }, []);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -40,7 +65,7 @@ export default function FeedScreen() {
   }, [filters]);
 
   const filteredActivities = useMemo(() => {
-    return mockActivities.filter(activity => {
+    return allActivities.filter(activity => {
       // Filter by selected sport tab
       if (selectedSport !== 'all' && activity.sport !== selectedSport) {
         return false;
@@ -65,7 +90,7 @@ export default function FeedScreen() {
       
       return true;
     });
-  }, [selectedSport, filters]);
+  }, [selectedSport, filters, allActivities]);
 
   const handleRemoveFilter = (key: keyof FilterOptions) => {
     setFilters(f => ({ ...f, [key]: key === 'spotsAvailable' ? false : null }));

@@ -1,7 +1,7 @@
 import { Activity } from '@/types/activity';
 import { SportIcon } from './SportIcon';
 import { LiveIndicator } from './LiveIndicator';
-import { MapPin, Clock, Users } from 'lucide-react';
+import { MapPin, Clock, Users, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ActivityCardProps {
@@ -27,9 +27,27 @@ export function ActivityCard({ activity, onClick }: ActivityCardProps) {
       className={cn(
         'w-full p-4 bg-card rounded-2xl shadow-card border border-border/50',
         'transition-all duration-200 hover:shadow-elevated hover:scale-[1.02]',
-        'active:scale-[0.98] text-left'
+        'active:scale-[0.98] text-left',
+        activity.isJustPosted && 'ring-2 ring-primary/50'
       )}
     >
+      {/* Just Posted / Need Players Badges */}
+      {(activity.isJustPosted || activity.isHost) && (
+        <div className="flex gap-2 mb-3">
+          {activity.isJustPosted && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+              <Sparkles className="w-3 h-3" />
+              Just Posted
+            </span>
+          )}
+          {activity.isHost && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold">
+              You're hosting
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="flex gap-4">
         <SportIcon sport={activity.sport} size="lg" />
         
@@ -72,6 +90,12 @@ export function ActivityCard({ activity, onClick }: ActivityCardProps) {
               <Users className="w-3.5 h-3.5" />
               {spotsLeft} {spotsLeft === 1 ? 'spot' : 'spots'}
             </div>
+
+            {activity.isJustPosted && spotsLeft > 1 && (
+              <span className="text-xs font-semibold text-urgent">
+                Need players now
+              </span>
+            )}
           </div>
         </div>
       </div>
