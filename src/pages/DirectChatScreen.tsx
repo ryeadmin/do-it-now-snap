@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { MobileLayout } from '@/components/MobileLayout';
 import { Button } from '@/components/ui/button';
@@ -6,70 +6,56 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ArrowLeft, Send, Zap } from 'lucide-react';
 import { User } from '@/types/user';
+import { useChats } from '@/contexts/ChatContext';
 import { cn } from '@/lib/utils';
-
-interface Message {
-  id: string;
-  text: string;
-  sender: 'user' | 'other' | 'system';
-  timestamp: Date;
-}
 
 export default function DirectChatScreen() {
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
   const user = location.state?.user as User | undefined;
+  const { createOrGetStartNowChat, addMessage, getChat } = useChats();
 
   const [newMessage, setNewMessage] = useState('');
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'system-1',
-      text: 'You both are available right now.',
-      sender: 'system',
-      timestamp: new Date(),
-    },
-    {
-      id: 'system-2',
-      text: 'Start coordinating!',
-      sender: 'system',
-      timestamp: new Date(),
-    },
-  ]);
+  const [chatId, setChatId] = useState<string | null>(null);
+
+  // Initialize chat when user is available
+  useEffect(() => {
+    if (user) {
+      const chat = createOrGetStartNowChat(user);
+      setChatId(chat.id);
+    }
+  }, [user, createOrGetStartNowChat]);
+
+  const currentChat = chatId ? getChat(chatId) : undefined;
+  const messages = currentChat?.messages || [];
 
   const handleSend = () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !chatId) return;
 
-    const message: Message = {
-      id: Date.now().toString(),
+    addMessage(chatId, {
       text: newMessage,
       sender: 'user',
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, message]);
+    });
     setNewMessage('');
 
     // Simulate response after delay
     setTimeout(() => {
-      const response: Message = {
-        id: (Date.now() + 1).toString(),
-        text: "Hey! I'm down to play. Where should we meet?",
-        sender: 'other',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, response]);
+      if (chatId) {
+        addMessage(chatId, {
+          text: "Hey! I'm down to play. Where should we meet?",
+          sender: 'other',
+        });
+      }
     }, 1500);
   };
 
   const sendQuickInvite = () => {
-    const invite: Message = {
-      id: Date.now().toString(),
+    if (!chatId) return;
+    addMessage(chatId, {
       text: "⚡ Quick Invite: Let's play right now! I'm ready to go.",
       sender: 'user',
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, invite]);
+    });
   };
 
   if (!user) {

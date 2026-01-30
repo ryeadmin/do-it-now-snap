@@ -2,16 +2,77 @@ import { MobileLayout } from '@/components/MobileLayout';
 import { mockActivities } from '@/data/mockActivities';
 import { SportIcon } from '@/components/SportIcon';
 import { useNavigate } from 'react-router-dom';
-import { Clock, ChevronRight } from 'lucide-react';
+import { ChevronRight, Zap, Users } from 'lucide-react';
+import { useChats, Chat } from '@/contexts/ChatContext';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { BottomNav } from '@/components/BottomNav';
+import { cn } from '@/lib/utils';
 
 // Simulated joined activities (user has joined activity 1)
 const joinedActivityIds = ['1'];
 
+function formatTimeAgo(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+}
+
 export default function ChatsListScreen() {
   const navigate = useNavigate();
+  const { chats, getLastMessage } = useChats();
   
+  // Get joined activities for activity chats
   const joinedActivities = mockActivities.filter(a => joinedActivityIds.includes(a.id));
-  const hasChats = joinedActivities.length > 0;
+  
+  // Combine Start Now chats with activity chats
+  const allChats: { type: 'start-now' | 'activity'; data: Chat | typeof joinedActivities[0]; lastMessage: string; timestamp: Date }[] = [];
+  
+  // Add Start Now chats
+  chats.forEach(chat => {
+    if (chat.type === 'start-now') {
+      const lastMsg = getLastMessage(chat);
+      allChats.push({
+        type: 'start-now',
+        data: chat,
+        lastMessage: lastMsg?.text || '',
+        timestamp: chat.updatedAt,
+      });
+    }
+  });
+  
+  // Add activity chats (simulated)
+  joinedActivities.forEach(activity => {
+    allChats.push({
+      type: 'activity',
+      data: activity,
+      lastMessage: '"On my way! 🏃"',
+      timestamp: new Date(),
+    });
+  });
+  
+  // Sort by timestamp (most recent first)
+  allChats.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  
+  const hasChats = allChats.length > 0;
+
+  const handleChatClick = (item: typeof allChats[0]) => {
+    if (item.type === 'start-now') {
+      const chat = item.data as Chat;
+      navigate(`/direct-chat/${chat.user?.id}`, { state: { user: chat.user } });
+    } else {
+      const activity = item.data as typeof joinedActivities[0];
+      navigate(`/chat/${activity.id}`);
+    }
+  };
 
   return (
     <MobileLayout className="flex flex-col">
@@ -25,31 +86,80 @@ export default function ChatsListScreen() {
       {/* Content */}
       <main className="flex-1 p-4 pb-24 overflow-y-auto">
         {hasChats ? (
-          <div className="space-y-3">
-            {joinedActivities.map((activity) => (
-              <button
-                key={activity.id}
-                onClick={() => navigate(`/chat/${activity.id}`)}
-                className="w-full flex items-center gap-4 p-4 bg-card rounded-xl border border-border/50 hover:bg-card/80 transition-colors text-left"
-              >
-                <SportIcon sport={activity.sport} size="md" />
-                
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-foreground truncate">
-                    {activity.title}
-                  </h3>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Clock className="w-3 h-3" />
-                    <span>Starts in {activity.startsIn} min</span>
-                  </div>
-                  <p className="text-sm text-primary mt-1">
-                    "On my way! 🏃" • Just now
-                  </p>
-                </div>
-                
-                <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-              </button>
-            ))}
+          <div className="space-y-2">
+            {allChats.map((item, index) => {
+              if (item.type === 'start-now') {
+                const chat = item.data as Chat;
+                return (
+                  <button
+                    key={chat.id}
+                    onClick={() => handleChatClick(item)}
+                    className="w-full flex items-center gap-3 p-3 bg-card rounded-xl border border-border/50 hover:bg-card/80 transition-colors text-left"
+                  >
+                    <Avatar className="w-12 h-12 shrink-0">
+                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                        {chat.user?.name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-foreground truncate">
+                          {chat.user?.name}
+                        </h3>
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold shrink-0">
+                          <Zap className="w-2.5 h-2.5" />
+                          Start Now
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate mt-0.5">
+                        {item.lastMessage}
+                      </p>
+                    </div>
+                    
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className="text-xs text-muted-foreground">
+                        {formatTimeAgo(item.timestamp)}
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                  </button>
+                );
+              } else {
+                const activity = item.data as typeof joinedActivities[0];
+                return (
+                  <button
+                    key={activity.id}
+                    onClick={() => handleChatClick(item)}
+                    className="w-full flex items-center gap-3 p-3 bg-card rounded-xl border border-border/50 hover:bg-card/80 transition-colors text-left"
+                  >
+                    <SportIcon sport={activity.sport} size="md" />
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-foreground truncate">
+                          {activity.title}
+                        </h3>
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground text-[10px] font-semibold shrink-0">
+                          <Users className="w-2.5 h-2.5" />
+                          Activity
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate mt-0.5">
+                        {item.lastMessage}
+                      </p>
+                    </div>
+                    
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className="text-xs text-muted-foreground">
+                        {formatTimeAgo(item.timestamp)}
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                  </button>
+                );
+              }
+            })}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
@@ -58,7 +168,7 @@ export default function ChatsListScreen() {
             </div>
             <h3 className="font-semibold text-foreground mb-2">No chats yet</h3>
             <p className="text-sm text-muted-foreground mb-6 max-w-[250px]">
-              Join a game to start chatting with other players
+              Join a game or tap Start Now to chat with players
             </p>
             <button
               onClick={() => navigate('/feed')}
@@ -70,36 +180,7 @@ export default function ChatsListScreen() {
         )}
       </main>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-background/95 backdrop-blur-sm border-t border-border">
-        <div className="flex items-center justify-around py-4 pb-safe-bottom">
-          <button 
-            onClick={() => navigate('/')}
-            className="flex flex-col items-center gap-1 text-muted-foreground"
-          >
-            <span className="text-2xl">🏠</span>
-            <span className="text-xs font-medium">Home</span>
-          </button>
-          <button 
-            onClick={() => navigate('/feed')}
-            className="flex flex-col items-center gap-1 text-muted-foreground"
-          >
-            <span className="text-2xl">🔍</span>
-            <span className="text-xs font-medium">Browse</span>
-          </button>
-          <button className="flex flex-col items-center gap-1 text-primary">
-            <span className="text-2xl">💬</span>
-            <span className="text-xs font-medium">Chats</span>
-          </button>
-          <button 
-            onClick={() => navigate('/profile')}
-            className="flex flex-col items-center gap-1 text-muted-foreground"
-          >
-            <span className="text-2xl">👤</span>
-            <span className="text-xs font-medium">Profile</span>
-          </button>
-        </div>
-      </nav>
+      <BottomNav />
     </MobileLayout>
   );
 }
