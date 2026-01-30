@@ -86,7 +86,7 @@ export default function DirectChatScreen() {
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="flex items-center gap-3 px-4 py-3">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/start-now-match')}
             className="p-2 -ml-2 hover:bg-muted rounded-full transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-foreground" />

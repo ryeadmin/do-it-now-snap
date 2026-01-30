@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { MobileLayout } from '@/components/MobileLayout';
 import { UserCard } from '@/components/UserCard';
 import { ProfilePreviewSheet } from '@/components/ProfilePreviewSheet';
-import { UpgradeModal } from '@/components/UpgradeModal';
+import { FreeTrialModal } from '@/components/FreeTrialModal';
+import { TrialEndedModal } from '@/components/TrialEndedModal';
+import { TrialBanner } from '@/components/TrialBanner';
 import { Button } from '@/components/ui/button';
 import { useFreemium } from '@/hooks/useFreemium';
 import { mockNearbyUsers } from '@/data/mockUsers';
@@ -12,15 +14,32 @@ import { ArrowLeft, Users, Crown } from 'lucide-react';
 
 export default function StartNowMatchScreen() {
   const navigate = useNavigate();
-  const { isPremium, isLocked, upgradeToPremium } = useFreemium();
+  const { 
+    isPremium, 
+    isLocked, 
+    startFreeTrial, 
+    upgradeToPremium, 
+    trialStatus, 
+    trialDaysLeft 
+  } = useFreemium();
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [upgradeTrigger, setUpgradeTrigger] = useState<'blurred-user' | 'full-activity' | 'missed-match'>('blurred-user');
+  const [showTrialModal, setShowTrialModal] = useState(false);
+  const [showTrialEndedModal, setShowTrialEndedModal] = useState(false);
+
+  // Show trial ended modal when trial expires
+  useEffect(() => {
+    if (trialStatus === 'ended') {
+      setShowTrialEndedModal(true);
+    }
+  }, [trialStatus]);
 
   const handleUserClick = (user: User, index: number) => {
     if (isLocked(index, 'user')) {
-      setUpgradeTrigger('blurred-user');
-      setShowUpgradeModal(true);
+      if (trialStatus === 'ended') {
+        setShowTrialEndedModal(true);
+      } else {
+        setShowTrialModal(true);
+      }
     } else {
       setSelectedUser(user);
     }
@@ -28,17 +47,34 @@ export default function StartNowMatchScreen() {
 
   const handleStartChat = (user: User) => {
     setSelectedUser(null);
-    // Navigate to direct chat with this user
     navigate(`/direct-chat/${user.id}`, { state: { user } });
+  };
+
+  const handleUpgradeClick = () => {
+    if (trialStatus === 'none') {
+      setShowTrialModal(true);
+    } else if (trialStatus === 'ended') {
+      setShowTrialEndedModal(true);
+    } else {
+      // Already premium or ending soon - show upgrade option
+      setShowTrialEndedModal(true);
+    }
   };
 
   return (
     <MobileLayout className="bg-background">
+      {/* Trial Banner */}
+      <TrialBanner
+        trialStatus={trialStatus}
+        daysLeft={trialDaysLeft}
+        onUpgrade={upgradeToPremium}
+      />
+
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="flex items-center justify-between px-4 py-3">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/')}
             className="p-2 -ml-2 hover:bg-muted rounded-full transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-foreground" />
@@ -49,21 +85,18 @@ export default function StartNowMatchScreen() {
             <h1 className="text-lg font-bold text-foreground">Ready Now</h1>
           </div>
 
-          {!isPremium && (
+          {!isPremium && trialStatus !== 'active' && trialStatus !== 'ending-soon' && (
             <Button
               variant="ghost"
               size="sm"
               className="text-primary"
-              onClick={() => {
-                setUpgradeTrigger('blurred-user');
-                setShowUpgradeModal(true);
-              }}
+              onClick={handleUpgradeClick}
             >
               <Crown className="w-4 h-4 mr-1" />
-              Upgrade
+              Try Free
             </Button>
           )}
-          {isPremium && <div className="w-20" />}
+          {(isPremium || trialStatus === 'active' || trialStatus === 'ending-soon') && <div className="w-20" />}
         </div>
       </div>
 
@@ -90,17 +123,33 @@ export default function StartNowMatchScreen() {
         </div>
 
         {/* Upgrade prompt for free users */}
-        {!isPremium && (
+        {!isPremium && trialStatus === 'none' && (
           <div className="mt-6 p-4 bg-primary/5 rounded-2xl border border-primary/20 text-center">
             <p className="text-sm text-muted-foreground mb-3">
               You're just one step away from seeing everyone
             </p>
             <Button
               className="gradient-action"
-              onClick={() => setShowUpgradeModal(true)}
+              onClick={() => setShowTrialModal(true)}
             >
               <Crown className="w-4 h-4 mr-2" />
-              Unlock All Players
+              Start Free Trial
+            </Button>
+          </div>
+        )}
+
+        {/* Trial ended prompt */}
+        {trialStatus === 'ended' && (
+          <div className="mt-6 p-4 bg-destructive/5 rounded-2xl border border-destructive/20 text-center">
+            <p className="text-sm text-muted-foreground mb-3">
+              Your trial has ended. Upgrade to see all players.
+            </p>
+            <Button
+              className="gradient-action"
+              onClick={() => setShowTrialEndedModal(true)}
+            >
+              <Crown className="w-4 h-4 mr-2" />
+              Upgrade to Premium
             </Button>
           </div>
         )}
@@ -114,12 +163,18 @@ export default function StartNowMatchScreen() {
         onStartChat={handleStartChat}
       />
 
-      {/* Upgrade Modal */}
-      <UpgradeModal
-        isOpen={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
+      {/* Free Trial Modal */}
+      <FreeTrialModal
+        isOpen={showTrialModal}
+        onClose={() => setShowTrialModal(false)}
+        onStartTrial={startFreeTrial}
+      />
+
+      {/* Trial Ended Modal */}
+      <TrialEndedModal
+        isOpen={showTrialEndedModal}
+        onClose={() => setShowTrialEndedModal(false)}
         onUpgrade={upgradeToPremium}
-        trigger={upgradeTrigger}
       />
     </MobileLayout>
   );
