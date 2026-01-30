@@ -14,6 +14,7 @@ import ProfileScreen from "./pages/ProfileScreen";
 import MatchingScreen from "./pages/MatchingScreen";
 import StartNowMatchScreen from "./pages/StartNowMatchScreen";
 import DirectChatScreen from "./pages/DirectChatScreen";
+import PitchDeckScreen from "./pages/PitchDeckScreen";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/chat/:id" element={<ChatScreen />} />
             <Route path="/chats" element={<ChatsListScreen />} />
             <Route path="/profile" element={<ProfileScreen />} />
+            <Route path="/pitch" element={<PitchDeckScreen />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
