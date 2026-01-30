@@ -12,7 +12,7 @@ interface UpgradeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onStartTrial: () => void;
-  trigger?: 'blurred-user' | 'full-activity' | 'missed-match';
+  trigger?: 'blurred-user' | 'full-activity' | 'missed-match' | 'locked-activity' | 'scroll-limit';
 }
 
 const triggerMessages = {
@@ -27,6 +27,14 @@ const triggerMessages = {
   'missed-match': {
     title: 'You just missed a match',
     description: 'Get real-time notifications when players are available.',
+  },
+  'locked-activity': {
+    title: 'Be one step faster',
+    description: 'Unlock full visibility and priority joins.',
+  },
+  'scroll-limit': {
+    title: 'See more activities',
+    description: 'Premium users see all nearby last-minute activities.',
   },
 };
 
