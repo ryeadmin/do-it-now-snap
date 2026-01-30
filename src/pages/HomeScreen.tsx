@@ -56,7 +56,7 @@ export default function HomeScreen() {
           </p>
 
           {/* Main CTA */}
-          <div className="pt-4">
+          <div className="pt-4 space-y-3">
             <Button
               variant="action"
               size="xl"
@@ -65,6 +65,15 @@ export default function HomeScreen() {
             >
               <Zap className="w-6 h-6" />
               Find a Game
+            </Button>
+            
+            <Button
+              variant="default"
+              size="lg"
+              onClick={() => navigate('/create')}
+              className="w-full"
+            >
+              Host a Game
             </Button>
           </div>
 
