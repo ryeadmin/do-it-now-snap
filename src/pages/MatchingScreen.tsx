@@ -44,9 +44,9 @@ export default function MatchingScreen() {
       setShowMatch(true);
     }, 3500);
 
-    // Navigate to activity after showing match
+    // Navigate to user matching screen (not activity)
     const navigateTimer = setTimeout(() => {
-      navigate('/activity/1');
+      navigate('/start-now-match');
     }, 5000);
 
     return () => {
