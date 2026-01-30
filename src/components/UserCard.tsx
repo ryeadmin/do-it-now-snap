@@ -8,10 +8,11 @@ import { cn } from '@/lib/utils';
 interface UserCardProps {
   user: User;
   isLocked?: boolean;
+  isPremium?: boolean;
   onClick: () => void;
 }
 
-export function UserCard({ user, isLocked = false, onClick }: UserCardProps) {
+export function UserCard({ user, isLocked = false, isPremium = false, onClick }: UserCardProps) {
   return (
     <button
       onClick={onClick}
@@ -42,7 +43,7 @@ export function UserCard({ user, isLocked = false, onClick }: UserCardProps) {
             <h3 className="font-semibold text-foreground truncate">{user.name}</h3>
             <span className="flex items-center gap-0.5 text-xs text-primary font-medium bg-primary/10 px-2 py-0.5 rounded-full">
               <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse-live" />
-              Ready now
+              {isPremium ? 'Online now' : 'Ready now'}
             </span>
           </div>
 

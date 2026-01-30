@@ -4,7 +4,7 @@ import { ActivityCard } from '@/components/ActivityCard';
 import { LiveIndicator } from '@/components/LiveIndicator';
 import { mockActivities } from '@/data/mockActivities';
 import { Activity, SportType } from '@/types/activity';
-import { ArrowLeft, Lock, Crown } from 'lucide-react';
+import { ArrowLeft, Lock, Crown, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { BottomNav } from '@/components/BottomNav';
@@ -77,8 +77,10 @@ export default function FeedScreen() {
     return count;
   }, [filters]);
 
-  const filteredActivities = useMemo(() => {
-    return allActivities.filter(activity => {
+  // Smart filtering with fallback - NEVER show empty state in demo
+  const { filteredActivities, isUsingFallback } = useMemo(() => {
+    // First, try to apply all filters strictly
+    let results = allActivities.filter(activity => {
       if (selectedSport !== 'all' && activity.sport !== selectedSport) {
         return false;
       }
@@ -96,7 +98,54 @@ export default function FeedScreen() {
       }
       return true;
     });
+
+    // Demo safeguard: if no results, use smart fallback
+    if (results.length === 0) {
+      // Fallback 1: Just match sport, relax other filters
+      if (selectedSport !== 'all') {
+        results = allActivities.filter(a => a.sport === selectedSport);
+      }
+      
+      // Fallback 2: If still empty, show closest match (first activity that's closest to filters)
+      if (results.length === 0) {
+        // Sort by relevance: distance first, then time
+        const sorted = [...allActivities].sort((a, b) => {
+          // Prioritize by distance
+          if (filters.distance) {
+            const aDist = Math.abs(a.distance - filters.distance);
+            const bDist = Math.abs(b.distance - filters.distance);
+            if (aDist !== bDist) return aDist - bDist;
+          }
+          // Then by time
+          if (filters.time) {
+            const aTime = Math.abs(a.startsIn - filters.time);
+            const bTime = Math.abs(b.startsIn - filters.time);
+            if (aTime !== bTime) return aTime - bTime;
+          }
+          return a.distance - b.distance;
+        });
+        results = sorted.slice(0, 1); // Always show at least 1
+      }
+      
+      return { filteredActivities: results, isUsingFallback: true };
+    }
+
+    return { filteredActivities: results, isUsingFallback: false };
   }, [selectedSport, filters, allActivities]);
+
+  // Ensure at least 1 joinable activity for Free users (the first one is always unlocked)
+  const getActivityDisplayInfo = (index: number) => {
+    // First activity is ALWAYS joinable (not locked) for demo purposes
+    if (index === 0) {
+      return { locked: false, isFull: false, isDelayed: false };
+    }
+    
+    const locked = !isPremium && isLocked(index, 'activity');
+    const isFull = locked && index % 2 === 0;
+    const isDelayed = locked && index % 2 === 1;
+    
+    return { locked, isFull, isDelayed };
+  };
 
   const handleRemoveFilter = (key: keyof FilterOptions) => {
     setFilters(f => ({ ...f, [key]: key === 'spotsAvailable' ? false : null }));
@@ -110,7 +159,9 @@ export default function FeedScreen() {
   };
 
   const handleActivityClick = (activity: Activity, index: number) => {
-    if (!isPremium && isLocked(index, 'activity')) {
+    const { locked } = getActivityDisplayInfo(index);
+    
+    if (locked) {
       setUpgradeContext('locked-activity');
       if (trialStatus === 'none') {
         setShowFreeTrialModal(true);
@@ -206,86 +257,80 @@ export default function FeedScreen() {
 
       {/* Feed */}
       <main className="flex-1 p-4 pb-24 overflow-y-auto">
-        {filteredActivities.length > 0 ? (
-          <div className="space-y-3 stagger-children">
-            {filteredActivities.map((activity, index) => {
-              const locked = !isPremium && isLocked(index, 'activity');
-              const isFull = locked && index % 2 === 0; // Alternate between "Full" and locked
-              const isDelayed = locked && index % 2 === 1;
-
-              if (locked) {
-                return (
-                  <button
-                    key={activity.id}
-                    onClick={() => handleActivityClick(activity, index)}
-                    className="w-full relative"
-                  >
-                    {/* Blurred card */}
-                    <div className="blur-sm pointer-events-none opacity-60">
-                      <ActivityCard
-                        activity={activity}
-                        onClick={() => {}}
-                      />
-                    </div>
-                    
-                    {/* Overlay */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 rounded-2xl">
-                      <div className="bg-card/95 backdrop-blur-sm rounded-xl px-4 py-3 shadow-lg border border-border/50 text-center">
-                        <Lock className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
-                        {isFull ? (
-                          <>
-                            <p className="font-semibold text-foreground text-sm">Activity Full</p>
-                            <p className="text-xs text-muted-foreground">Premium users get priority</p>
-                          </>
-                        ) : (
-                          <>
-                            <p className="font-semibold text-foreground text-sm">Updated 10 min ago</p>
-                            <p className="text-xs text-muted-foreground">Upgrade for real-time updates</p>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                );
-              }
-
-              return (
-                <ActivityCard
-                  key={activity.id}
-                  activity={activity}
-                  onClick={() => handleActivityClick(activity, index)}
-                />
-              );
-            })}
-
-            {/* Upgrade CTA after visible activities for free users */}
-            {!isPremium && filteredActivities.length > maxVisibleActivities && (
-              <div className="mt-6 p-6 rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 text-center">
-                <Crown className="w-8 h-8 text-primary mx-auto mb-3" />
-                <h3 className="font-bold text-foreground mb-1">See more activities</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Be one step faster. Unlock full visibility and priority joins.
-                </p>
-                <Button
-                  onClick={handleUpgradeClick}
-                  className="gradient-action text-white font-semibold"
-                >
-                  {trialStatus === 'none' ? 'Start Free Trial' : 'Upgrade to Premium'}
-                </Button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center mb-4">
-              <span className="text-3xl">⚡</span>
-            </div>
-            <h3 className="font-semibold text-foreground mb-2">No matches right now</h3>
-            <p className="text-sm text-muted-foreground max-w-[250px]">
-              Check back soon or tap Start Now
-            </p>
+        {/* Smart fallback notice */}
+        {isUsingFallback && (
+          <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-muted/50 text-sm text-muted-foreground">
+            <Info className="w-4 h-4 shrink-0" />
+            <span>Showing the closest match available</span>
           </div>
         )}
+
+        <div className="space-y-3 stagger-children">
+          {filteredActivities.map((activity, index) => {
+            const { locked, isFull, isDelayed } = getActivityDisplayInfo(index);
+
+            if (locked) {
+              return (
+                <button
+                  key={activity.id}
+                  onClick={() => handleActivityClick(activity, index)}
+                  className="w-full relative"
+                >
+                  {/* Blurred card */}
+                  <div className="blur-sm pointer-events-none opacity-60">
+                    <ActivityCard
+                      activity={activity}
+                      onClick={() => {}}
+                    />
+                  </div>
+                  
+                  {/* Overlay */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 rounded-2xl">
+                    <div className="bg-card/95 backdrop-blur-sm rounded-xl px-4 py-3 shadow-lg border border-border/50 text-center">
+                      <Lock className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
+                      {isFull ? (
+                        <>
+                          <p className="font-semibold text-foreground text-sm">Activity Full</p>
+                          <p className="text-xs text-muted-foreground">Premium users get priority</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-semibold text-foreground text-sm">Updated 10 min ago</p>
+                          <p className="text-xs text-muted-foreground">Upgrade for real-time updates</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            }
+
+            return (
+              <ActivityCard
+                key={activity.id}
+                activity={activity}
+                onClick={() => handleActivityClick(activity, index)}
+              />
+            );
+          })}
+
+          {/* Upgrade CTA after visible activities for free users */}
+          {!isPremium && filteredActivities.length > maxVisibleActivities && (
+            <div className="mt-6 p-6 rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 text-center">
+              <Crown className="w-8 h-8 text-primary mx-auto mb-3" />
+              <h3 className="font-bold text-foreground mb-1">See more activities</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Be one step faster. Unlock full visibility and priority joins.
+              </p>
+              <Button
+                onClick={handleUpgradeClick}
+                className="gradient-action text-white font-semibold"
+              >
+                {trialStatus === 'none' ? 'Start Free Trial' : 'Upgrade to Premium'}
+              </Button>
+            </div>
+          )}
+        </div>
       </main>
 
       <BottomNav />

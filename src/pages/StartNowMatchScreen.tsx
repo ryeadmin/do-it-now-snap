@@ -33,8 +33,15 @@ export default function StartNowMatchScreen() {
     }
   }, [trialStatus]);
 
+  // Demo safeguard: First user is ALWAYS visible/clickable (never locked)
+  const isUserLocked = (index: number) => {
+    // First user is always accessible for demo purposes
+    if (index === 0) return false;
+    return isLocked(index, 'user');
+  };
+
   const handleUserClick = (user: User, index: number) => {
-    if (isLocked(index, 'user')) {
+    if (isUserLocked(index)) {
       if (trialStatus === 'ended') {
         setShowTrialEndedModal(true);
       } else {
@@ -60,6 +67,12 @@ export default function StartNowMatchScreen() {
       setShowTrialEndedModal(true);
     }
   };
+
+  // Calculate visible vs locked counts for display
+  const visibleCount = isPremium 
+    ? mockNearbyUsers.length 
+    : mockNearbyUsers.filter((_, i) => !isUserLocked(i)).length;
+  const totalCount = mockNearbyUsers.length;
 
   return (
     <MobileLayout className="bg-background">
@@ -106,7 +119,16 @@ export default function StartNowMatchScreen() {
         <div className="flex items-center justify-center gap-2 mb-6">
           <span className="w-2 h-2 bg-primary rounded-full animate-pulse-live" />
           <p className="text-sm text-muted-foreground">
-            {mockNearbyUsers.length} players available nearby
+            {isPremium ? (
+              <>{totalCount} players available nearby</>
+            ) : (
+              <>
+                {visibleCount} of {totalCount} players visible
+                {visibleCount < totalCount && (
+                  <span className="text-primary ml-1">• Upgrade to see all</span>
+                )}
+              </>
+            )}
           </p>
         </div>
 
@@ -116,7 +138,8 @@ export default function StartNowMatchScreen() {
             <UserCard
               key={user.id}
               user={user}
-              isLocked={isLocked(index, 'user')}
+              isLocked={isUserLocked(index)}
+              isPremium={isPremium}
               onClick={() => handleUserClick(user, index)}
             />
           ))}
