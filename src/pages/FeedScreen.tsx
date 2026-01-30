@@ -120,7 +120,7 @@ export default function FeedScreen() {
             
             <div className="flex items-center gap-2">
               <LiveIndicator size="sm" />
-              <h1 className="font-bold text-lg">Last-Minute</h1>
+              <h1 className="font-bold text-lg">Happening Now</h1>
             </div>
 
             <FilterSheet 
@@ -168,11 +168,11 @@ export default function FeedScreen() {
         ) : (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center mb-4">
-              <span className="text-3xl">🔍</span>
+              <span className="text-3xl">⚡</span>
             </div>
-            <h3 className="font-semibold text-foreground mb-2">No games right now</h3>
+            <h3 className="font-semibold text-foreground mb-2">No matches right now</h3>
             <p className="text-sm text-muted-foreground max-w-[250px]">
-              Check back soon or try different filters
+              Check back soon or tap Start Now
             </p>
           </div>
         )}

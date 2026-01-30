@@ -9,7 +9,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { path: '/', icon: '🏠', label: 'Home' },
-  { path: '/feed', icon: '🔍', label: 'Browse' },
+  { path: '/feed', icon: '⚡', label: 'Match' },
   { path: '/chats', icon: '💬', label: 'Chats' },
   { path: '/profile', icon: '👤', label: 'Profile' },
 ];

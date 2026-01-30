@@ -10,6 +10,7 @@ import ActivityDetailScreen from "./pages/ActivityDetailScreen";
 import ChatScreen from "./pages/ChatScreen";
 import ChatsListScreen from "./pages/ChatsListScreen";
 import ProfileScreen from "./pages/ProfileScreen";
+import MatchingScreen from "./pages/MatchingScreen";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<HomeScreen />} />
           <Route path="/feed" element={<FeedScreen />} />
+          <Route path="/matching" element={<MatchingScreen />} />
           <Route path="/create" element={<CreateGameScreen />} />
           <Route path="/activity/:id" element={<ActivityDetailScreen />} />
           <Route path="/chat/:id" element={<ChatScreen />} />
