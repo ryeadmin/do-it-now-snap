@@ -11,6 +11,8 @@ import ChatScreen from "./pages/ChatScreen";
 import ChatsListScreen from "./pages/ChatsListScreen";
 import ProfileScreen from "./pages/ProfileScreen";
 import MatchingScreen from "./pages/MatchingScreen";
+import StartNowMatchScreen from "./pages/StartNowMatchScreen";
+import DirectChatScreen from "./pages/DirectChatScreen";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +27,8 @@ const App = () => (
           <Route path="/" element={<HomeScreen />} />
           <Route path="/feed" element={<FeedScreen />} />
           <Route path="/matching" element={<MatchingScreen />} />
+          <Route path="/start-now-match" element={<StartNowMatchScreen />} />
+          <Route path="/direct-chat/:id" element={<DirectChatScreen />} />
           <Route path="/create" element={<CreateGameScreen />} />
           <Route path="/activity/:id" element={<ActivityDetailScreen />} />
           <Route path="/chat/:id" element={<ChatScreen />} />
