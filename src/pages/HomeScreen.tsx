@@ -1,24 +1,31 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { MobileLayout } from '@/components/MobileLayout';
 import { LiveIndicator } from '@/components/LiveIndicator';
-import { MapPin, Zap } from 'lucide-react';
+import { LocationSelector } from '@/components/LocationSelector';
+import { BottomNav } from '@/components/BottomNav';
+import { Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function HomeScreen() {
   const navigate = useNavigate();
+  const [currentLocation, setCurrentLocation] = useState('Downtown');
 
   return (
     <MobileLayout className="flex flex-col">
       {/* Header */}
       <header className="px-6 pt-safe-top">
         <div className="flex items-center justify-between py-4">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <MapPin className="w-4 h-4" />
-            <span className="text-sm font-medium">Downtown</span>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
+          <LocationSelector 
+            currentLocation={currentLocation}
+            onLocationChange={setCurrentLocation}
+          />
+          <button 
+            onClick={() => navigate('/profile')}
+            className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
+          >
             <span className="text-lg">👤</span>
-          </div>
+          </button>
         </div>
       </header>
 
@@ -43,6 +50,11 @@ export default function HomeScreen() {
             </p>
           </div>
 
+          {/* Location Context */}
+          <p className="text-sm text-muted-foreground">
+            Showing games near <span className="text-primary font-semibold">{currentLocation}</span>
+          </p>
+
           {/* Main CTA */}
           <div className="pt-4">
             <Button
@@ -63,30 +75,7 @@ export default function HomeScreen() {
         </div>
       </main>
 
-      {/* Bottom Navigation Hint */}
-      <nav className="absolute bottom-0 left-0 right-0 px-6 pb-safe-bottom">
-        <div className="flex items-center justify-around py-4 border-t border-border">
-          <button className="flex flex-col items-center gap-1 text-primary">
-            <span className="text-2xl">🏠</span>
-            <span className="text-xs font-medium">Home</span>
-          </button>
-          <button 
-            onClick={() => navigate('/feed')}
-            className="flex flex-col items-center gap-1 text-muted-foreground"
-          >
-            <span className="text-2xl">🔍</span>
-            <span className="text-xs font-medium">Browse</span>
-          </button>
-          <button className="flex flex-col items-center gap-1 text-muted-foreground">
-            <span className="text-2xl">💬</span>
-            <span className="text-xs font-medium">Chats</span>
-          </button>
-          <button className="flex flex-col items-center gap-1 text-muted-foreground">
-            <span className="text-2xl">👤</span>
-            <span className="text-xs font-medium">Profile</span>
-          </button>
-        </div>
-      </nav>
+      <BottomNav />
     </MobileLayout>
   );
 }

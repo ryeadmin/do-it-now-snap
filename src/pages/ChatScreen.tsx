@@ -1,19 +1,61 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MobileLayout } from '@/components/MobileLayout';
 import { Button } from '@/components/ui/button';
 import { mockActivities, mockChatMessages } from '@/data/mockActivities';
-import { ArrowLeft, Send, MapPin, Clock } from 'lucide-react';
+import { ArrowLeft, Send, MapPin, Clock, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ChatMessage } from '@/types/activity';
+
+interface SystemMessage {
+  id: string;
+  type: 'system';
+  text: string;
+  icon: 'clock' | 'location' | 'info';
+}
 
 export default function ChatScreen() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [messages, setMessages] = useState<ChatMessage[]>(mockChatMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [systemMessages, setSystemMessages] = useState<SystemMessage[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const activity = mockActivities.find(a => a.id === id);
+  
+  useEffect(() => {
+    if (activity) {
+      // Add system messages when chat opens
+      setSystemMessages([
+        {
+          id: 'sys-1',
+          type: 'system',
+          text: `Game starts in ${activity.startsIn} minutes`,
+          icon: 'clock',
+        },
+        {
+          id: 'sys-2',
+          type: 'system',
+          text: `Location: ${activity.location}`,
+          icon: 'location',
+        },
+        {
+          id: 'sys-3',
+          type: 'system',
+          text: `${activity.spotsTaken} of ${activity.spotsTotal} players joined`,
+          icon: 'info',
+        },
+      ]);
+      
+      // Load chat messages
+      setMessages(mockChatMessages);
+    }
+  }, [activity]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
   
   if (!activity) {
     return (
@@ -38,6 +80,14 @@ export default function ChatScreen() {
     
     setMessages([...messages, message]);
     setNewMessage('');
+  };
+
+  const getSystemIcon = (icon: SystemMessage['icon']) => {
+    switch (icon) {
+      case 'clock': return <Clock className="w-4 h-4" />;
+      case 'location': return <MapPin className="w-4 h-4" />;
+      case 'info': return <Info className="w-4 h-4" />;
+    }
   };
 
   return (
@@ -75,11 +125,13 @@ export default function ChatScreen() {
                 className="w-8 h-8 rounded-full border-2 border-background bg-secondary"
               />
             ))}
-            <div className="w-8 h-8 rounded-full border-2 border-background bg-primary flex items-center justify-center">
-              <span className="text-xs font-bold text-primary-foreground">
-                +{activity.spotsTaken - 3}
-              </span>
-            </div>
+            {activity.spotsTaken > 3 && (
+              <div className="w-8 h-8 rounded-full border-2 border-background bg-primary flex items-center justify-center">
+                <span className="text-xs font-bold text-primary-foreground">
+                  +{activity.spotsTaken - 3}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -93,6 +145,20 @@ export default function ChatScreen() {
 
       {/* Messages */}
       <main className="flex-1 p-4 overflow-y-auto space-y-4">
+        {/* System Messages */}
+        <div className="space-y-2 mb-4">
+          {systemMessages.map((msg) => (
+            <div
+              key={msg.id}
+              className="flex items-center justify-center gap-2 py-2 px-4 bg-secondary/50 rounded-lg text-sm text-muted-foreground"
+            >
+              {getSystemIcon(msg.icon)}
+              <span>{msg.text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Chat Messages */}
         {messages.map((message) => (
           <div
             key={message.id}
@@ -137,6 +203,7 @@ export default function ChatScreen() {
             </div>
           </div>
         ))}
+        <div ref={messagesEndRef} />
       </main>
 
       {/* Message Input */}

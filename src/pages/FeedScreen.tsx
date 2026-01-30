@@ -1,13 +1,83 @@
+import { useState, useMemo } from 'react';
 import { MobileLayout } from '@/components/MobileLayout';
 import { ActivityCard } from '@/components/ActivityCard';
 import { LiveIndicator } from '@/components/LiveIndicator';
 import { mockActivities } from '@/data/mockActivities';
-import { ArrowLeft, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { BottomNav } from '@/components/BottomNav';
+import { FilterSheet, FilterOptions, ActiveFilters } from '@/components/FilterSheet';
+import { SportType } from '@/types/activity';
+import { cn } from '@/lib/utils';
+
+const sportTabs: { label: string; value: SportType | 'all'; icon: string }[] = [
+  { label: 'All Sports', value: 'all', icon: '' },
+  { label: 'Basketball', value: 'basketball', icon: '🏀' },
+  { label: 'Soccer', value: 'soccer', icon: '⚽' },
+  { label: 'Tennis', value: 'tennis', icon: '🎾' },
+  { label: 'Padel', value: 'padel', icon: '🎾' },
+  { label: 'Running', value: 'running', icon: '🏃' },
+];
 
 export default function FeedScreen() {
   const navigate = useNavigate();
+  const [selectedSport, setSelectedSport] = useState<SportType | 'all'>('all');
+  const [filters, setFilters] = useState<FilterOptions>({
+    distance: null,
+    time: null,
+    sport: null,
+    spotsAvailable: false,
+  });
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.distance) count++;
+    if (filters.time) count++;
+    if (filters.sport) count++;
+    if (filters.spotsAvailable) count++;
+    return count;
+  }, [filters]);
+
+  const filteredActivities = useMemo(() => {
+    return mockActivities.filter(activity => {
+      // Filter by selected sport tab
+      if (selectedSport !== 'all' && activity.sport !== selectedSport) {
+        return false;
+      }
+      
+      // Filter by filter sheet options
+      if (filters.sport && activity.sport !== filters.sport) {
+        return false;
+      }
+      
+      if (filters.distance && activity.distance > filters.distance) {
+        return false;
+      }
+      
+      if (filters.time && activity.startsIn > filters.time) {
+        return false;
+      }
+      
+      if (filters.spotsAvailable && activity.spotsTaken >= activity.spotsTotal) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [selectedSport, filters]);
+
+  const handleRemoveFilter = (key: keyof FilterOptions) => {
+    setFilters(f => ({ ...f, [key]: key === 'spotsAvailable' ? false : null }));
+  };
+
+  const handleTabClick = (value: SportType | 'all') => {
+    setSelectedSport(value);
+    // Clear sport filter from sheet when using tabs
+    if (filters.sport) {
+      setFilters(f => ({ ...f, sport: null }));
+    }
+  };
 
   return (
     <MobileLayout className="flex flex-col">
@@ -28,66 +98,62 @@ export default function FeedScreen() {
               <h1 className="font-bold text-lg">Last-Minute</h1>
             </div>
 
-            <Button variant="ghost" size="icon-sm">
-              <SlidersHorizontal className="w-5 h-5" />
-            </Button>
+            <FilterSheet 
+              filters={filters}
+              onApplyFilters={setFilters}
+              activeFilterCount={activeFilterCount}
+            />
           </div>
         </div>
 
-        {/* Quick Filters */}
+        {/* Sport Tabs */}
         <div className="px-4 pb-3 flex gap-2 overflow-x-auto scrollbar-hide">
-          <button className="px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold whitespace-nowrap">
-            All Sports
-          </button>
-          <button className="px-4 py-2 rounded-full bg-secondary text-secondary-foreground text-sm font-medium whitespace-nowrap">
-            🏀 Basketball
-          </button>
-          <button className="px-4 py-2 rounded-full bg-secondary text-secondary-foreground text-sm font-medium whitespace-nowrap">
-            ⚽ Soccer
-          </button>
-          <button className="px-4 py-2 rounded-full bg-secondary text-secondary-foreground text-sm font-medium whitespace-nowrap">
-            🎾 Tennis
-          </button>
+          {sportTabs.map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => handleTabClick(tab.value)}
+              className={cn(
+                "px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all",
+                selectedSport === tab.value
+                  ? "bg-primary text-primary-foreground scale-105"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              )}
+            >
+              {tab.icon && `${tab.icon} `}{tab.label}
+            </button>
+          ))}
         </div>
+
+        {/* Active Filters */}
+        <ActiveFilters filters={filters} onRemoveFilter={handleRemoveFilter} />
       </header>
 
       {/* Feed */}
       <main className="flex-1 p-4 pb-24 overflow-y-auto">
-        <div className="space-y-3 stagger-children">
-          {mockActivities.map((activity) => (
-            <ActivityCard
-              key={activity.id}
-              activity={activity}
-              onClick={() => navigate(`/activity/${activity.id}`)}
-            />
-          ))}
-        </div>
+        {filteredActivities.length > 0 ? (
+          <div className="space-y-3 stagger-children">
+            {filteredActivities.map((activity) => (
+              <ActivityCard
+                key={activity.id}
+                activity={activity}
+                onClick={() => navigate(`/activity/${activity.id}`)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center mb-4">
+              <span className="text-3xl">🔍</span>
+            </div>
+            <h3 className="font-semibold text-foreground mb-2">No games right now</h3>
+            <p className="text-sm text-muted-foreground max-w-[250px]">
+              Check back soon or try different filters
+            </p>
+          </div>
+        )}
       </main>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-background/95 backdrop-blur-sm border-t border-border">
-        <div className="flex items-center justify-around py-4 pb-safe-bottom">
-          <button 
-            onClick={() => navigate('/')}
-            className="flex flex-col items-center gap-1 text-muted-foreground"
-          >
-            <span className="text-2xl">🏠</span>
-            <span className="text-xs font-medium">Home</span>
-          </button>
-          <button className="flex flex-col items-center gap-1 text-primary">
-            <span className="text-2xl">🔍</span>
-            <span className="text-xs font-medium">Browse</span>
-          </button>
-          <button className="flex flex-col items-center gap-1 text-muted-foreground">
-            <span className="text-2xl">💬</span>
-            <span className="text-xs font-medium">Chats</span>
-          </button>
-          <button className="flex flex-col items-center gap-1 text-muted-foreground">
-            <span className="text-2xl">👤</span>
-            <span className="text-xs font-medium">Profile</span>
-          </button>
-        </div>
-      </nav>
+      <BottomNav />
     </MobileLayout>
   );
 }
