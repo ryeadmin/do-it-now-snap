@@ -1,15 +1,18 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MobileLayout } from '@/components/MobileLayout';
 import { SportIcon } from '@/components/SportIcon';
 import { LiveIndicator } from '@/components/LiveIndicator';
 import { Button } from '@/components/ui/button';
 import { mockActivities } from '@/data/mockActivities';
-import { ArrowLeft, MapPin, Clock, Users, Share2, Star } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Users, Share2, Star, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function ActivityDetailScreen() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [isJoining, setIsJoining] = useState(false);
+  const [hasJoined, setHasJoined] = useState(false);
   
   const activity = mockActivities.find(a => a.id === id);
   
@@ -24,6 +27,17 @@ export default function ActivityDetailScreen() {
   const spotsLeft = activity.spotsTotal - activity.spotsTaken;
   const isUrgent = activity.startsIn <= 20;
   const progressPercent = (activity.spotsTaken / activity.spotsTotal) * 100;
+
+  const handleJoin = () => {
+    setIsJoining(true);
+    // Simulate brief loading then navigate to chat
+    setTimeout(() => {
+      setHasJoined(true);
+      setTimeout(() => {
+        navigate(`/chat/${activity.id}`);
+      }, 500);
+    }, 800);
+  };
 
   return (
     <MobileLayout className="flex flex-col">
@@ -145,12 +159,26 @@ export default function ActivityDetailScreen() {
       {/* Fixed Bottom CTA */}
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] p-4 pb-safe-bottom bg-background/95 backdrop-blur-sm border-t border-border">
         <Button 
-          variant="action" 
+          variant={hasJoined ? "default" : "action"}
           size="xl" 
-          className="w-full shadow-glow"
-          onClick={() => navigate(`/chat/${activity.id}`)}
+          className={cn(
+            "w-full transition-all",
+            !hasJoined && "shadow-glow",
+            hasJoined && "bg-live text-white"
+          )}
+          onClick={handleJoin}
+          disabled={isJoining || hasJoined}
         >
-          Join Now
+          {isJoining ? (
+            <span className="animate-pulse">Joining...</span>
+          ) : hasJoined ? (
+            <>
+              <Check className="w-5 h-5" />
+              Joined! Opening chat...
+            </>
+          ) : (
+            'Join Now'
+          )}
         </Button>
       </div>
     </MobileLayout>
